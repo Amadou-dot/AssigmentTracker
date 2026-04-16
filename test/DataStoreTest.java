@@ -255,6 +255,79 @@ public class DataStoreTest {
     }
 
     // -----------------------------------------------------------------------
+    // Notes field (added in a later version)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void saveAndLoad_noteRoundTrip() {
+        Subject s = subjectWithAssignments("Math",
+                new Object[]{"HW1", "04/20/2026", false, "Review chapters 3-5"}
+        );
+        DataStore.save(modelWith(s));
+
+        DefaultListModel<Subject> loaded = new DefaultListModel<>();
+        DataStore.load(loaded);
+
+        assertEquals("Review chapters 3-5",
+                loaded.get(0).getTableModel().getValueAt(0, 3));
+    }
+
+    @Test
+    void saveAndLoad_emptyNotePreserved() {
+        Subject s = subjectWithAssignments("Math",
+                new Object[]{"HW1", "04/20/2026", false, ""}
+        );
+        DataStore.save(modelWith(s));
+
+        DefaultListModel<Subject> loaded = new DefaultListModel<>();
+        DataStore.load(loaded);
+
+        assertEquals("", loaded.get(0).getTableModel().getValueAt(0, 3));
+    }
+
+    @Test
+    void saveAndLoad_noteWithSpecialChars() {
+        // Quotes, backslash, and newline all need JSON escaping.
+        String original = "Said \"check page 5\".\nAlso C:\\path.";
+        Subject s = subjectWithAssignments("Math",
+                new Object[]{"HW1", "04/20/2026", false, original}
+        );
+        DataStore.save(modelWith(s));
+
+        DefaultListModel<Subject> loaded = new DefaultListModel<>();
+        DataStore.load(loaded);
+
+        assertEquals(original, loaded.get(0).getTableModel().getValueAt(0, 3));
+    }
+
+    /**
+     * Backward compatibility: a JSON file written by an older version of the
+     * app has no "notes" field on each assignment. Loading must still succeed
+     * and set each row's note to the empty string.
+     */
+    @Test
+    void load_legacyJsonWithoutNotesField_setsEmptyNote() throws Exception {
+        String legacy = "[\n" +
+                "  {\n" +
+                "    \"name\": \"Math\",\n" +
+                "    \"assignments\": [\n" +
+                "      {\"name\": \"HW1\", \"date\": \"04/20/2026\", \"done\": false}\n" +
+                "    ]\n" +
+                "  }\n" +
+                "]\n";
+        Files.write(tempFile, legacy.getBytes(StandardCharsets.UTF_8));
+
+        DefaultListModel<Subject> loaded = new DefaultListModel<>();
+        DataStore.load(loaded);
+
+        assertEquals(1, loaded.size());
+        DefaultTableModel tm = loaded.get(0).getTableModel();
+        assertEquals(1, tm.getRowCount());
+        assertEquals("HW1", tm.getValueAt(0, 0));
+        assertEquals("",    tm.getValueAt(0, 3)); // missing field → ""
+    }
+
+    // -----------------------------------------------------------------------
     // Idempotency: save → load → save → load produces the same result
     // -----------------------------------------------------------------------
 

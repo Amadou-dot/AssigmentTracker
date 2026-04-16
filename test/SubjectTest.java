@@ -28,7 +28,8 @@ public class SubjectTest {
         DefaultTableModel model = subject.getTableModel();
         assertNotNull(model);
         assertEquals(0, model.getRowCount());
-        assertEquals(3, model.getColumnCount());
+        // 4 columns: Assignment, Due Date, Done, Notes
+        assertEquals(4, model.getColumnCount());
     }
 
     @Test
@@ -37,6 +38,7 @@ public class SubjectTest {
         assertEquals("Assignment", model.getColumnName(0));
         assertEquals("Due Date", model.getColumnName(1));
         assertEquals("Done", model.getColumnName(2));
+        assertEquals("Notes", model.getColumnName(3));
     }
 
     @Test
@@ -45,6 +47,7 @@ public class SubjectTest {
         assertEquals(String.class, model.getColumnClass(0));
         assertEquals(String.class, model.getColumnClass(1));
         assertEquals(Boolean.class, model.getColumnClass(2));
+        assertEquals(String.class, model.getColumnClass(3));
     }
 
     // --- setName ---
@@ -109,5 +112,22 @@ public class SubjectTest {
         model.addRow(new Object[]{"HW1", "2026-04-10", false});
         model.setValueAt(true, 0, 2);
         assertEquals(true, model.getValueAt(0, 2));
+    }
+
+    // --- Notes column ---
+
+    @Test
+    void addRowStoresNoteInColumn3() {
+        DefaultTableModel model = subject.getTableModel();
+        model.addRow(new Object[]{"HW1", "2026-04-10", false, "Cite sources"});
+        assertEquals("Cite sources", model.getValueAt(0, 3));
+    }
+
+    @Test
+    void noteCanBeUpdatedAfterAdd() {
+        DefaultTableModel model = subject.getTableModel();
+        model.addRow(new Object[]{"HW1", "2026-04-10", false, ""});
+        model.setValueAt("Updated", 0, 3);
+        assertEquals("Updated", model.getValueAt(0, 3));
     }
 }

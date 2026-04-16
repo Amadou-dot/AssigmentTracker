@@ -1,6 +1,7 @@
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.time.LocalDate;
@@ -22,6 +23,13 @@ public class Main {
      */
     public static void main(String[] args) {
         SwingUtilities.invokeLater(Main::createAndShowGUI);
+    }
+
+    /** Escapes the characters that matter for Swing's HTML tooltip renderer. */
+    private static String escapeHtml(String s) {
+        return s.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;");
     }
 
     /** Draws a small calendar icon at the given size using Java2D. */
@@ -86,8 +94,11 @@ public class Main {
                 frame.dispose();
             }
         });
+        // 4 columns to match Subject's table model (see Subject.java).
+        // The 4th column ("Notes") is hidden from the view below and edited
+        // through the Notes button.
         DefaultTableModel emptyTableModel = new DefaultTableModel(
-                new String[]{"Assignment", "Due Date", "Done"}, 0) {
+                new String[]{"Assignment", "Due Date", "Done", "Notes"}, 0) {
             @Override
             public Class<?> getColumnClass(int col) {
                 return col == 2 ? Boolean.class : String.class; // col 2 = "Done" checkbox
@@ -95,7 +106,36 @@ public class Main {
         };
 
         // --- Center: assignment table ---
-        JTable table = new JTable(emptyTableModel);
+        // Override getToolTipText so hovering a row shows its note.
+        // The Notes column is hidden from the view but still in the model at
+        // index 3, which is where we read the tooltip text from.
+        JTable table = new JTable(emptyTableModel) {
+            @Override
+            public String getToolTipText(MouseEvent e) {
+                int row = rowAtPoint(e.getPoint());
+                if (row < 0) return null;
+                Object note = getModel().getValueAt(row, 3);
+                if (note == null) return null;
+                String text = note.toString();
+                if (text.isEmpty()) return null; // no tooltip when there's no note
+                // Wrap in HTML so long notes wrap; escape user text first.
+                return "<html><p style='width:240px'>" + escapeHtml(text) + "</p></html>";
+            }
+        };
+        // JTable doesn't listen for tooltips unless a tooltip is set or the
+        // component is registered. Explicit register keeps the intent obvious.
+        ToolTipManager.sharedInstance().registerComponent(table);
+
+        // Hide the "Notes" column from the user. The data stays in the model
+        // (so saving/loading still sees it); only the view drops the column.
+        // Must be called after every setModel() because swapping the model
+        // rebuilds the JTable's column view from scratch.
+        Runnable hideNotesColumn = () -> {
+            if (table.getColumnCount() > 3) {
+                table.removeColumn(table.getColumnModel().getColumn(3));
+            }
+        };
+        hideNotesColumn.run();
         table.setRowHeight(24);
         table.setBackground(theme.contentBg());
         table.setForeground(theme.contentFg());
@@ -124,11 +164,16 @@ public class Main {
         });
         JButton addButton = new JButton("Add");
         JButton removeButton = new JButton("Remove Selected");
+        // Notes button opens a dialog to edit the selected assignment's note.
+        // Disabled until a subject AND a row are both selected.
+        JButton notesButton = new JButton("Notes…");
+        notesButton.setToolTipText("Edit notes for the selected assignment");
         nameField.setEnabled(false);
         dateField.setEnabled(false);
         datePickerButton.setEnabled(false);
         addButton.setEnabled(false);
         removeButton.setEnabled(false);
+        notesButton.setEnabled(false);
 
         JLabel darkModeLabel = new JLabel(theme.isDark() ? "Light Mode" : "Dark Mode");
         JToggleButton darkModeToggle = new JToggleButton(theme.isDark() ? "☀" : "☾");
@@ -144,6 +189,7 @@ public class Main {
         inputPanel.add(datePickerButton);
         inputPanel.add(addButton);
         inputPanel.add(removeButton);
+        inputPanel.add(notesButton);
 
         // Spacer to push toggle to the right
         inputPanel.add(Box.createHorizontalStrut(20));
@@ -210,6 +256,7 @@ public class Main {
             Subject selected = subjectList.getSelectedValue();
             boolean subjectSelected = selected != null;
             table.setModel(subjectSelected ? selected.getTableModel() : emptyTableModel);
+            hideNotesColumn.run(); // setModel rebuilds the view — re-hide Notes
             nameField.setEnabled(subjectSelected);
             dateField.setEnabled(subjectSelected);
             datePickerButton.setEnabled(subjectSelected);
@@ -217,6 +264,18 @@ public class Main {
             removeButton.setEnabled(subjectSelected);
             renameButton.setEnabled(subjectSelected);
             deleteButton.setEnabled(subjectSelected);
+            // Swapping the model clears the table selection, so the Notes
+            // button has no row to act on until the user picks one.
+            notesButton.setEnabled(false);
+        });
+
+        // Notes button needs BOTH a subject and a selected row to be enabled.
+        // The table's selection model is stable across setModel() calls, so we
+        // only need to wire this once.
+        table.getSelectionModel().addListSelectionListener(e -> {
+            if (e.getValueIsAdjusting()) return;
+            notesButton.setEnabled(subjectList.getSelectedValue() != null
+                    && table.getSelectedRow() >= 0);
         });
 
         // --- Assignment actions ---
@@ -228,7 +287,10 @@ public class Main {
             String name = nameField.getText().trim();
             String date = dateField.getText().trim(); // already MM/dd/yyyy or empty
             if (!name.isEmpty()) {
-                selected.getTableModel().addRow(new Object[]{name, date, false});
+                // New assignments start with an empty note ("" — not null,
+                // so the JSON writer and the notes dialog don't have to
+                // special-case nulls).
+                selected.getTableModel().addRow(new Object[]{name, date, false, ""});
                 nameField.setText("");
                 dateField.setText("");
                 pickedDate[0] = null;
@@ -245,6 +307,34 @@ public class Main {
             if (row >= 0) {
                 selected.getTableModel().removeRow(row);
                 calendarPanel.refresh(); // keep due-date markers in sync
+            }
+        });
+
+        // --- Edit notes for the selected row ---
+        // Opens a small dialog with a multi-line text area pre-filled with
+        // the current note. On OK, writes the text back into the hidden
+        // Notes column (index 3) of the subject's table model.
+        notesButton.addActionListener(e -> {
+            Subject selected = subjectList.getSelectedValue();
+            if (selected == null) return;
+            int row = table.getSelectedRow();
+            if (row < 0) return;
+
+            DefaultTableModel tm = selected.getTableModel();
+            String assignmentName = (String) tm.getValueAt(row, 0);
+            String currentNote = (String) tm.getValueAt(row, 3);
+            if (currentNote == null) currentNote = ""; // defensive for older data
+
+            JTextArea area = new JTextArea(currentNote, 4, 32);
+            area.setLineWrap(true);
+            area.setWrapStyleWord(true);
+            JScrollPane sp = new JScrollPane(area);
+
+            int result = JOptionPane.showConfirmDialog(frame, sp,
+                    "Notes — " + assignmentName,
+                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+            if (result == JOptionPane.OK_OPTION) {
+                tm.setValueAt(area.getText(), row, 3);
             }
         });
 

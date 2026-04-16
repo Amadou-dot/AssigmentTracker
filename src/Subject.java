@@ -14,8 +14,12 @@ public class Subject {
      */
     public Subject(String name) {
         this.name = name;
+        // Columns: Assignment, Due Date, Done, Notes.
+        // The Notes column is hidden from the user-facing JTable (see Main)
+        // and edited through a separate dialog. It is kept in the table model
+        // so each row carries its own note without a parallel data structure.
         this.tableModel = new DefaultTableModel(
-                new String[]{"Assignment", "Due Date", "Done"}, 0) {
+                new String[]{"Assignment", "Due Date", "Done", "Notes"}, 0) {
             @Override
             public Class<?> getColumnClass(int col) {
                 return col == 2 ? Boolean.class : String.class; // col 2 = "Done" checkbox

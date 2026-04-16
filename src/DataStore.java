@@ -34,9 +34,11 @@ class DataStore {
                 String aName = (String) tm.getValueAt(r, 0);
                 String date  = (String) tm.getValueAt(r, 1);
                 Boolean done = (Boolean) tm.getValueAt(r, 2);
+                String notes = (String) tm.getValueAt(r, 3); // "" when no note
                 sb.append("      {\"name\": ").append(jsonString(aName))
                   .append(", \"date\": ").append(jsonString(date))
                   .append(", \"done\": ").append(done != null && done)
+                  .append(", \"notes\": ").append(jsonString(notes))
                   .append("}");
                 if (r < tm.getRowCount() - 1) sb.append(",");
                 sb.append("\n");
@@ -87,7 +89,9 @@ class DataStore {
                     String aName = extractStringField(row, "name");
                     String date  = extractStringField(row, "date");
                     boolean done = extractBoolField(row, "done");
-                    s.getTableModel().addRow(new Object[]{aName, date, done});
+                    // Missing "notes" field returns "" — keeps old data files compatible.
+                    String notes = extractStringField(row, "notes");
+                    s.getTableModel().addRow(new Object[]{aName, date, done, notes});
                 }
             }
             result.add(s);
