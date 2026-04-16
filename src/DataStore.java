@@ -10,10 +10,15 @@ import java.util.List;
  * Handles saving and loading application data to/from a JSON file.
  */
 class DataStore {
-    private static final Path DATA_FILE = Paths.get(
+    private static Path DATA_FILE = Paths.get(
             System.getProperty("user.home"), ".assignmenttracker_data.json");
 
     private DataStore() { }
+
+    /** Overrides the data file path. Intended for testing only. */
+    static void setDataFile(Path path) {
+        DATA_FILE = path;
+    }
 
     /** Saves all subjects and their assignments to disk. */
     static void save(DefaultListModel<Subject> model) {
