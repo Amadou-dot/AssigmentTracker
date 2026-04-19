@@ -101,10 +101,10 @@ public class Main {
             }
         });
         DefaultTableModel emptyTableModel = new DefaultTableModel(
-                new String[]{"Assignment", "Due Date", "Done"}, 0) {
+                new String[]{"Assignment", "Due Date", "Done", "Notes"}, 0) {
             @Override
             public Class<?> getColumnClass(int col) {
-                return col == 2 ? Boolean.class : String.class; // col 2 = "Done" checkbox
+                return col == 2 ? Boolean.class : String.class;
             }
         };
 
@@ -113,6 +113,14 @@ public class Main {
         // layout/size tweaks are set here.
         JTable table = new JTable(emptyTableModel);
         table.setRowHeight(24);
+
+        // Hide the Notes column — notes are shown in NotesPanel below the table instead.
+        table.getColumnModel().getColumn(3).setMinWidth(0);
+        table.getColumnModel().getColumn(3).setMaxWidth(0);
+        table.getColumnModel().getColumn(3).setWidth(0);
+
+        // Notes panel sits below the assignment table.
+        NotesPanel notesPanel = new NotesPanel(subjectListModel, table);
 
         // --- South: input panel (disabled until a class is selected) ---
         DateTimeFormatter displayFmt = DateTimeFormatter.ofPattern("MM/dd/yyyy");
@@ -225,6 +233,13 @@ public class Main {
             Subject selected = subjectList.getSelectedValue();
             boolean subjectSelected = selected != null;
             table.setModel(subjectSelected ? selected.getTableModel() : emptyTableModel);
+
+            // Keep Notes column hidden whenever the model is swapped.
+            table.getColumnModel().getColumn(3).setMinWidth(0);
+            table.getColumnModel().getColumn(3).setMaxWidth(0);
+            table.getColumnModel().getColumn(3).setWidth(0);
+
+            notesPanel.setSubject(selected);
             nameField.setEnabled(subjectSelected);
             dateField.setEnabled(subjectSelected);
             datePickerButton.setEnabled(subjectSelected);
@@ -243,7 +258,7 @@ public class Main {
             String name = nameField.getText().trim();
             String date = dateField.getText().trim(); // already MM/dd/yyyy or empty
             if (!name.isEmpty()) {
-                selected.getTableModel().addRow(new Object[]{name, date, false});
+                selected.getTableModel().addRow(new Object[]{name, date, false, ""});
                 nameField.setText("");
                 dateField.setText("");
                 pickedDate[0] = null;
@@ -332,11 +347,14 @@ public class Main {
             // That listener resets the table and disables all controls.
         });
 
-        // --- Assemble frame ---
+        // Split the Assignments tab vertically: table on top, notes editor below.
         JScrollPane tableScroll = new JScrollPane(table);
+        JSplitPane assignmentSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, tableScroll, notesPanel);
+        assignmentSplit.setResizeWeight(0.75);
+        assignmentSplit.setBorder(null);
 
         JTabbedPane tabs = new JTabbedPane();
-        tabs.addTab("Assignments", tableScroll);
+        tabs.addTab("Assignments", assignmentSplit);
         tabs.addTab("Calendar", calendarPanel);
 
         // Component colors are handled by the FlatLaf LAF swap registered
