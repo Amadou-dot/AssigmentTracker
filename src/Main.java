@@ -240,7 +240,16 @@ public class Main {
         inputLeft.add(addButton);
         inputLeft.add(removeButton);
 
+        NotificationService notificationService = new NotificationService(subjectListModel, frame);
+
+        JButton notifSettingsButton = new JButton("\uD83D\uDD14");
+        notifSettingsButton.setToolTipText("Notification settings");
+        notifSettingsButton.setFocusPainted(false);
+        notifSettingsButton.putClientProperty("JButton.buttonType", "roundRect");
+        notifSettingsButton.addActionListener(e -> notificationService.showSettingsDialog());
+
         JPanel inputRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
+        inputRight.add(notifSettingsButton);
         inputRight.add(darkModeToggle);
 
         JPanel inputPanel = new JPanel(new BorderLayout());
@@ -294,7 +303,7 @@ public class Main {
         sidebarButtonPanel.add(deleteButton);
 
 
-        // --- Calendar panel ---
+        // Calendar panel
         CalendarPanel calendarPanel = new CalendarPanel(subjectListModel);
 
         // Swap LAF on theme toggle.
@@ -308,7 +317,7 @@ public class Main {
             }
         });
 
-        // --- Dark mode toggle action ---
+        //  Dark mode toggle action
         darkModeToggle.addActionListener(e -> theme.toggle());
 
         theme.addListener(() -> {
@@ -321,7 +330,7 @@ public class Main {
             ));
         });
 
-        // --- Selection listener: swap table model, toggle controls ---
+        // Selection listener: swap table model, toggle controls
         subjectList.addActionListener(e -> {
             Subject selected = (Subject) subjectList.getSelectedItem();
             boolean subjectSelected = selected != null;
@@ -351,7 +360,7 @@ public class Main {
             deleteButton.setEnabled(subjectSelected);
         });
 
-        // --- Assignment actions ---
+        // Assignment actions
         addButton.addActionListener(e -> {
             Subject selected = (Subject) subjectList.getSelectedItem();
             if (selected == null) return;
@@ -379,7 +388,7 @@ public class Main {
             }
         });
 
-        // --- New Class ---
+
         newClassButton.addActionListener(e -> {
             String input = JOptionPane.showInputDialog(frame, "Class name:", "New Class",
                     JOptionPane.PLAIN_MESSAGE);
@@ -402,7 +411,7 @@ public class Main {
             subjectList.setSelectedItem(subject);
         });
 
-        // --- Rename ---
+        // Rename
         renameButton.addActionListener(e -> {
             Subject selected = (Subject) subjectList.getSelectedItem();
             if (selected == null) return;
@@ -430,7 +439,7 @@ public class Main {
             calendarPanel.refresh();
         });
 
-        // --- Delete ---
+        // Delete
         deleteButton.addActionListener(e -> {
             Subject selected = (Subject) subjectList.getSelectedItem();
             if (selected == null) return;
@@ -458,7 +467,7 @@ public class Main {
         assignmentSplit.setResizeWeight(0.75);
         assignmentSplit.setBorder(null);
 
-        // --- App header bar ---
+        // App header bar
         JLabel appTitle = new JLabel("Assignment Tracker");
         appTitle.setFont(appTitle.getFont().deriveFont(Font.BOLD, 15f));
 
@@ -487,7 +496,7 @@ public class Main {
             ));
         });
 
-        // --- Scratchpad tab ---
+        // Scratchpad tab
         JTextArea scratchArea = new JTextArea(DataStore.loadScratchpad());
         scratchArea.setLineWrap(true);
         scratchArea.setWrapStyleWord(true);
@@ -524,5 +533,6 @@ public class Main {
         frame.add(centerPanel, BorderLayout.CENTER);
         frame.add(inputPanel, BorderLayout.SOUTH);
         frame.setVisible(true);
+        notificationService.start();
     }
 }
