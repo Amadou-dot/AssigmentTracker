@@ -67,7 +67,22 @@ public final class ThemeManager {
             Theme found = findById(savedId);
             if (found != null) return found;
             // Unknown id → fall through to default WITHOUT overwriting the saved value.
+            return defaultTheme();
         }
+
+        // 2. Migrate legacy boolean if present. Sentinel value distinguishes
+        //    "key absent" from "key present and false".
+        final boolean LEGACY_ABSENT_SENTINEL = true; // read with fake default = true
+        boolean legacyTrue  = prefsNode.getBoolean(KEY_DARKMODE, LEGACY_ABSENT_SENTINEL);
+        boolean legacyFalse = prefsNode.getBoolean(KEY_DARKMODE, false);
+        boolean legacyKeyExists = legacyTrue == legacyFalse; // both reads return same value
+        if (legacyKeyExists) {
+            String migratedId = legacyTrue ? "default-dark" : "default-light";
+            prefsNode.put(KEY_THEME, migratedId);
+            return findById(migratedId);
+        }
+
+        // 3. No prefs → default-dark.
         return defaultTheme();
     }
 

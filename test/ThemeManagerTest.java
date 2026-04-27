@@ -62,4 +62,35 @@ public class ThemeManagerTest {
         // testNode is fresh and empty; rebuilt in @BeforeEach
         assertEquals("default-dark", ThemeManager.get().current().id());
     }
+
+    @Test
+    void migration_legacyDarkModeTrue_mapsToDefaultDark() {
+        testNode.putBoolean("darkMode", true);
+        ThemeManager.setPreferencesNodeForTesting(testNode);
+        assertEquals("default-dark", ThemeManager.get().current().id());
+        assertEquals("default-dark", testNode.get("themeId", null),
+                "themeId should be persisted after migration");
+    }
+
+    @Test
+    void migration_legacyDarkModeFalse_mapsToDefaultLight() {
+        testNode.putBoolean("darkMode", false);
+        ThemeManager.setPreferencesNodeForTesting(testNode);
+        assertEquals("default-light", ThemeManager.get().current().id());
+        assertEquals("default-light", testNode.get("themeId", null));
+    }
+
+    @Test
+    void migration_runsOnlyOnce_subsequentLoadsUseThemeId() {
+        // First load migrates.
+        testNode.putBoolean("darkMode", true);
+        ThemeManager.setPreferencesNodeForTesting(testNode);
+        assertEquals("default-dark", ThemeManager.get().current().id());
+
+        // Now manually flip darkMode to false; themeId should still win.
+        testNode.putBoolean("darkMode", false);
+        ThemeManager.setPreferencesNodeForTesting(testNode);
+        assertEquals("default-dark", ThemeManager.get().current().id(),
+                "themeId should override the legacy darkMode key");
+    }
 }
