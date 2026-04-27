@@ -113,6 +113,20 @@ public final class ThemeManager {
         listeners.add(r);
     }
 
+    public void setCurrent(Theme t) {
+        this.current = t;
+        prefsNode.put(KEY_THEME, t.id());
+        try {
+            t.apply();
+        } catch (ThemeApplyException e) {
+            // Persist user intent even if applying fails this session — next
+            // launch will retry. Listeners still fire so border-rebuild etc.
+            // re-runs against whatever LAF is active.
+            System.err.println("Could not apply theme " + t.id() + ": " + e.getMessage());
+        }
+        for (Runnable r : listeners) r.run();
+    }
+
     static Theme defaultTheme() {
         return findById("default-dark");
     }

@@ -102,4 +102,28 @@ public class ThemeManagerTest {
         assertEquals("no-such-theme", testNode.get("themeId", null),
                 "saved themeId must not be overwritten on fallback");
     }
+
+    @Test
+    void setCurrent_persistsThemeId() {
+        Theme dracula = ThemeManager.findById("dracula");
+        ThemeManager.get().setCurrent(dracula);
+        assertEquals("dracula", testNode.get("themeId", null));
+        assertEquals("dracula", ThemeManager.get().current().id());
+    }
+
+    @Test
+    void setCurrent_firesListeners() {
+        int[] callCount = {0};
+        ThemeManager.get().addListener(() -> callCount[0]++);
+        ThemeManager.get().setCurrent(ThemeManager.findById("nord"));
+        assertEquals(1, callCount[0]);
+    }
+
+    @Test
+    void setCurrent_isDarkReflectsCurrent() {
+        ThemeManager.get().setCurrent(ThemeManager.findById("default-light"));
+        assertFalse(ThemeManager.get().isDark());
+        ThemeManager.get().setCurrent(ThemeManager.findById("default-dark"));
+        assertTrue(ThemeManager.get().isDark());
+    }
 }
