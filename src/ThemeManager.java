@@ -10,9 +10,8 @@ import java.util.prefs.Preferences;
  * a lazy lifecycle so {@link #setPreferencesNodeForTesting(Preferences)} can
  * redirect persistence before the instance is built.
  *
- * Public API matches the old class: {@link #get()}, {@link #addListener(Runnable)},
- * {@link #isDark()}. The old {@code toggle()} is replaced by
- * {@link #setCurrent(Theme)}; the old enum is replaced by {@link #presets()}.
+ * Public API: {@link #get()}, {@link #current()}, {@link #presets()},
+ * {@link #isDark()}, {@link #addListener(Runnable)}.
  */
 public final class ThemeManager {
 
@@ -86,12 +85,6 @@ public final class ThemeManager {
 
     public void addListener(Runnable r) {
         listeners.add(r);
-    }
-
-    public void setCurrent(Theme theme) {
-        current = theme;
-        prefsNode.put(KEY_THEME, theme.id());
-        for (Runnable r : listeners) r.run();
     }
 
     static Theme defaultTheme() {
