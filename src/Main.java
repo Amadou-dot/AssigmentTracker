@@ -1,6 +1,4 @@
 import com.formdev.flatlaf.FlatDarkLaf;
-import com.formdev.flatlaf.FlatLaf;
-import com.formdev.flatlaf.FlatLightLaf;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -27,11 +25,13 @@ public class Main {
      * @param args ignored
      */
     public static void main(String[] args) {
-        UIManager.put("@accentColor", new Color(99, 102, 241));
-        if (ThemeManager.get().isDark()) {
+        try {
+            ThemeManager.get().current().apply();
+        } catch (ThemeApplyException e) {
+            // Missing themes JAR or other classpath problem — fall back so
+            // the app still launches.
+            System.err.println("Could not apply saved theme: " + e.getMessage());
             FlatDarkLaf.setup();
-        } else {
-            FlatLightLaf.setup();
         }
         UIManager.put("Button.arc", 8);
         UIManager.put("TextComponent.arc", 6);
@@ -225,12 +225,6 @@ public class Main {
         addButton.setEnabled(false);
         removeButton.setEnabled(false);
 
-        JToggleButton darkModeToggle = new JToggleButton(theme.isDark() ? "☀" : "☽");
-        darkModeToggle.setSelected(theme.isDark());
-        darkModeToggle.setFocusPainted(false);
-        darkModeToggle.setToolTipText("Toggle dark/light mode");
-        darkModeToggle.putClientProperty("JButton.buttonType", "roundRect");
-
         JPanel inputLeft = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
         inputLeft.add(new JLabel("Assignment:"));
         inputLeft.add(nameField);
@@ -248,9 +242,15 @@ public class Main {
         notifSettingsButton.putClientProperty("JButton.buttonType", "roundRect");
         notifSettingsButton.addActionListener(e -> notificationService.showSettingsDialog());
 
+        JButton prefsButton = new JButton("⚙"); // ⚙ gear
+        prefsButton.setToolTipText("Preferences");
+        prefsButton.setFocusPainted(false);
+        prefsButton.putClientProperty("JButton.buttonType", "roundRect");
+        prefsButton.addActionListener(e -> PreferencesDialog.show(frame));
+
         JPanel inputRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
         inputRight.add(notifSettingsButton);
-        inputRight.add(darkModeToggle);
+        inputRight.add(prefsButton);
 
         JPanel inputPanel = new JPanel(new BorderLayout());
         inputPanel.setBorder(BorderFactory.createCompoundBorder(
@@ -306,22 +306,7 @@ public class Main {
         // Calendar panel
         CalendarPanel calendarPanel = new CalendarPanel(subjectListModel);
 
-        // Swap LAF on theme toggle.
         theme.addListener(() -> {
-            try {
-                UIManager.setLookAndFeel(theme.isDark()
-                        ? new FlatDarkLaf() : new FlatLightLaf());
-                FlatLaf.updateUI();
-            } catch (UnsupportedLookAndFeelException ex) {
-                System.err.println("Could not switch LAF: " + ex.getMessage());
-            }
-        });
-
-        //  Dark mode toggle action
-        darkModeToggle.addActionListener(e -> theme.toggle());
-
-        theme.addListener(() -> {
-            darkModeToggle.setText(theme.isDark() ? "☀" : "☽");
             // Rebuild input border so it picks up the new border color.
             inputPanel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(1, 0, 0, 0,
