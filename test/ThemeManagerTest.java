@@ -49,4 +49,17 @@ public class ThemeManagerTest {
                 "solarized-dark", "solarized-light", "dracula",
                 "nord", "one-dark", "monokai-pro"), ids);
     }
+
+    @Test
+    void startup_savedThemeId_isLoaded() {
+        testNode.put("themeId", "dracula");
+        ThemeManager.setPreferencesNodeForTesting(testNode); // forces rebuild
+        assertEquals("dracula", ThemeManager.get().current().id());
+    }
+
+    @Test
+    void startup_noPrefs_defaultsToDefaultDark() {
+        // testNode is fresh and empty; rebuilt in @BeforeEach
+        assertEquals("default-dark", ThemeManager.get().current().id());
+    }
 }

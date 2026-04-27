@@ -57,7 +57,18 @@ public final class ThemeManager {
     private final List<Runnable> listeners = new ArrayList<>();
 
     private ThemeManager() {
-        this.current = defaultTheme();
+        this.current = resolveStartupTheme();
+    }
+
+    private static Theme resolveStartupTheme() {
+        // 1. New key wins.
+        String savedId = prefsNode.get(KEY_THEME, null);
+        if (savedId != null) {
+            Theme found = findById(savedId);
+            if (found != null) return found;
+            // Unknown id → fall through to default WITHOUT overwriting the saved value.
+        }
+        return defaultTheme();
     }
 
     /** Test-only seam — redirects prefs reads/writes and forces the singleton to rebuild. */
